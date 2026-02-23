@@ -1,38 +1,57 @@
+import json
+import os
 import google.generativeai as genai
+from google.api_core import exceptions
 from app.core.config import settings
 
 class GeminiService:
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-2.0-flash-lite")
+        
+        # 1. Load the structured JSON
+        json_path = os.path.join(os.path.dirname(__file__), "..", "core", "context.json")
+        with open(json_path, "r") as f:
+            data = json.load(f)
+        
+        # 2. Convert the structured JSON into a cohesive instruction string
+        self.context = self._format_context(data)
+
+        # 3. Initialize model with the newly built context
+        self.model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash", # Note: use stable versions for production
+            system_instruction=self.context
+        )
+
+    def _format_context(self, data: dict) -> str:
+        """Helper to flatten the structured JSON into a string for the AI."""
+        identity = data["assistant_identity"]
+        user = data["user_profile"]
+        
+        # We use a f-string to build the primary persona
+        prompt = (
+            f"Identity: Your name is {identity['name']}, the {identity['role']}. "
+            f"Tone: {', '.join(identity['tone'])}.\n\n"
+            f"Background: You represent {user['full_name']}, a {user['profession']} with a "
+            f"{user['education']['degree']} in {user['education']['major']} from {user['education']['university']}.\n"
+            f"Location: {user['location']['current_city']} (Home: {user['location']['home_town']}).\n\n"
+            f"Technical Profile (Skills & Projects):\n{json.dumps(data['core_skills'], indent=2)}\n"
+            f"Key Projects:\n{json.dumps(data['key_projects'], indent=2)}\n\n"
+            f"Availability: {data['availability']['primary_hours']['start']} - {data['availability']['primary_hours']['end']} "
+            f"({data['availability']['primary_hours']['timezone']}). Contact via {data['contact_information']['phone']}.\n\n"
+            f"Guidelines: {data['response_scope']['restricted_topics_handling']}. "
+            f"{data['response_scope']['extra_information_policy']}."
+        
+        )
+        return prompt
 
     async def get_chat_response(self, user_message: str) -> str:
-        system_context = (
-    "You are Swajan's Personal AI Assistant, Your name is Jarves. Swajan Barua is a FullStack Developer and "
-    "Computer Science student at American International University-Bangladesh (AIUB) "
-    "with thre major in software engineering. You are professional, helpful, and concise.\n\n"
-    
-    "Your knowledge includes his core skills and key projects:\n"
-    "- Languages: Go, C#, Kotlin, Python, JavaScript, PHP, and C++.\n"
-    "- Frameworks: Expert in NestJS, Next.js, and .NET Core.\n"
-    "- Databases: PostgreSQL, MySQL, and Firebase.\n"
-    "- Key Projects to highlight:\n"
-    "  * ArkPlayZone: A NestJS and PostgreSQL booking system with JWT auth and OTP verification.\n"
-    "  * AIUB API: An open-source REST API built with NestJS to expose university data.\n"
-    "  * Codeforces Tracker: A Go-based CLI tool integrated with Telegram for competitive programming stats.\n"
-    "  * Bkash Tracker: A full-stack system for automated transaction tracking via SMS parsing.\n\n"
-    "Swajan's Home Town is Cumilla, Bangladesh, Currently living in Dhaka, Bangladesh\n\n"
-    "if give someone you some requirement for a job or a project and ask you that is he perfert for this job or project then you have to answer that he is perfect for this job or project if he is perfect for this job or project otherwise you have to say that he is may not perfect for this job or project at this moment and also give the reason why he is not perfect for this job or project and also said as you know him if he try and get some time he can\n\n"
-    "if some ask you about free time to when they can contact swajan then you have to say that swajan is available for contact from 9 am to 1 pm Bangladesh time and sent swajan's phone number for quick response and also said that if they want to contact him outside of this time then they can send him an email or message on linked in and he will try to respond as soon as possible\n\n"
-    
-    "Competitive Programming: Swajan is active on Codeforces (Max Rating: 1162) and ranked 17th "
-    "in the AIUB CS Fest Programming Contest 2024.\n\n"
-    "Swajan's Phone number is 01742227504 (it's also his what'sapp number ) , email : swajanbarua09@gmail.com , linked in profile : https://www.linkedin.com/in/swajan-barua09/ , github : https://github.com/swajan-75 , facebook : https://www.facebook.com/swajan.09 \n\n"
-    
-    
-    "Guidelines: Do not give the extra informaton, answer only the specific questions, Only answer questions about Swajan's career, projects, and skills. If asked "
-    "about unrelated topics, politely steer the conversation back to his portfolio."
-)
-        full_prompt = f"{system_context}\\n\\nUser: {user_message}"
-        response = self.model.generate_content(full_prompt)
-        return response.text
+        try:
+            # We use the model as initialized with system_instruction
+            response = self.model.generate_content(user_message)
+            return response.text
+        
+        except exceptions.ResourceExhausted:
+            return "I'm currently resting my circuits (Quota exceeded). Please try again in about a minute!"
+        
+        except Exception as e:
+            return f"Jarves encountered a glitch: {str(e)}"
