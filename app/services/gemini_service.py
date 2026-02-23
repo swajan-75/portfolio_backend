@@ -8,17 +8,17 @@ class GeminiService:
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
         
-        # 1. Load the structured JSON
+      
         json_path = os.path.join(os.path.dirname(__file__), "..", "core", "context.json")
         with open(json_path, "r") as f:
             data = json.load(f)
         
-        # 2. Convert the structured JSON into a cohesive instruction string
+        
         self.context = self._format_context(data)
 
-        # 3. Initialize model with the newly built context
+      
         self.model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash", # Note: use stable versions for production
+            model_name="gemini-3-flash-preview", 
             system_instruction=self.context
         )
 
@@ -46,7 +46,7 @@ class GeminiService:
 
     async def get_chat_response(self, user_message: str) -> str:
         try:
-            # We use the model as initialized with system_instruction
+           
             response = self.model.generate_content(user_message)
             return response.text
         
