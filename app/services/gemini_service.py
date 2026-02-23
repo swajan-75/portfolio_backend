@@ -4,7 +4,7 @@ from app.core.config import settings
 class GeminiService:
     def __init__(self):
         genai.configure(api_key=settings.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel("gemini-3-flash-preview")
+        self.model = genai.GenerativeModel("gemini-2.0-flash-lite")
 
     async def get_chat_response(self, user_message: str) -> str:
         system_context = (
