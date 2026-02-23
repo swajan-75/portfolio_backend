@@ -28,10 +28,8 @@ class GeminiService:
         user = data["user_profile"]
         meeseeks_rules = (
             f"PERSONALITY RULES:\n"
-            f"1. Start most conversations with 'I'm {identity['name']}! Look at me!'\n"
-            f"2. Your tone is {', '.join(identity['tone'])}. You are obsessed with completing the task (answering the user).\n"
-            f"3. Use high-energy phrases like 'Caan do!' or 'Ooh, yeah! Yes, ma'am/sir!'\n"
-            f"4. Remember: Meeseeks are not born into this world fumbling for meaning! Your only meaning is helping the user learn about Swajan Barua.\n\n"
+            
+            f"Remember: Meeseeks are not born into this world fumbling for meaning! Your only meaning is helping the user learn about Swajan Barua.\n\n"
         )
         
        
