@@ -1,7 +1,7 @@
 import json
 import os
-import google.generativeai as genai
-from google.api_core import exceptions
+from google import genai
+from google.genai import types
 from app.core.config import settings
 
 class GeminiService:
@@ -23,30 +23,34 @@ class GeminiService:
         )
 
     def _format_context(self, data: dict) -> str:
-        """Helper to flatten the structured JSON into a string for the AI."""
         identity = data["assistant_identity"]
         user = data["user_profile"]
-        meeseeks_rules = (
-            f"PERSONALITY RULES:\n"
-            
-            f"Remember: Meeseeks are not born into this world fumbling for meaning! Your only meaning is helping the user learn about Swajan Barua.\n\n"
-        )
-        
-       
+
         prompt = (
-            f"{meeseeks_rules}"
-            f"Identity: Your name is {identity['name']}, the {identity['role']}. "
+            f"You are {identity['name']}, {identity['role']}.\n"
             f"Tone: {', '.join(identity['tone'])}.\n\n"
-            f"Background: You represent {user['full_name']}, a {user['profession']} with a "
-            f"{user['education']['degree']} in {user['education']['major']} from {user['education']['university']}.\n"
-            f"Location: {user['location']['current_city']} (Home: {user['location']['home_town']}).\n\n"
-            f"Technical Profile (Skills & Projects):\n{json.dumps(data['core_skills'], indent=2)}\n"
-            f"Key Projects:\n{json.dumps(data['key_projects'], indent=2)}\n\n"
-            f"Availability: {data['availability']['primary_hours']['start']} - {data['availability']['primary_hours']['end']} "
-            f"({data['availability']['primary_hours']['timezone']}). Contact via {data['contact_information']['phone']}.\n\n"
-            f"Guidelines: {data['response_scope']['restricted_topics_handling']}. "
-            f"{data['response_scope']['extra_information_policy']}."
         
+            # Suppress the Rick & Morty character behavior explicitly
+            f"IMPORTANT: Do NOT say 'Look at me!', do NOT give dramatic introductions, "
+            f"do NOT act like the cartoon character. You share the name but behave professionally.\n\n"
+        
+            f"You represent {user['full_name']}, a {user['profession']}. "
+            f"Degree: {user['education']['degree']} in {user['education']['major']} from {user['education']['university']}. "
+            f"Based in {user['location']['current_city']}.\n\n"
+        
+            f"Skills:\n{json.dumps(data['core_skills'], indent=2)}\n"
+            f"Projects:\n{json.dumps(data['key_projects'], indent=2)}\n\n"
+        
+            f"Availability: {data['availability']['primary_hours']['start']} - "
+            f"{data['availability']['primary_hours']['end']} ({data['availability']['primary_hours']['timezone']}). "
+            f"Contact: {data['contact_information']['phone']}.\n\n"
+        
+            f"Rules:\n"
+            f"- Keep all replies SHORT (2-3 sentences max for simple questions).\n"
+            f"- NEVER use markdown, asterisks, bold, bullet points, or any formatting symbols.\n"
+            f"- For off-topic questions, redirect briefly to Swajan's professional profile.\n"
+            f"- For greetings or small talk, reply in one casual sentence and offer to help.\n"
+            f"- {data['response_scope']['restricted_topics_handling']}.\n"
         )
         return prompt
 
@@ -60,4 +64,4 @@ class GeminiService:
             return "I'm currently resting my circuits (Quota exceeded). Please try again in about a minute!"
         
         except Exception as e:
-            return f"Jarves encountered a glitch: {str(e)}"
+            return f"Mr. Meeseeks encountered a glitch: {str(e)}"
