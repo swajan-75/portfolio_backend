@@ -2,25 +2,18 @@ import json
 import os
 from google import genai
 from google.genai import types
+from google.api_core import exceptions
 from app.core.config import settings
 
 class GeminiService:
     def __init__(self):
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        
-      
+        self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
         json_path = os.path.join(os.path.dirname(__file__), "..", "core", "context.json")
         with open(json_path, "r") as f:
             data = json.load(f)
-        
-        
-        self.context = self._format_context(data)
 
-      
-        self.model = genai.GenerativeModel(
-            model_name="gemini-3-flash-preview", 
-            system_instruction=self.context
-        )
+        self.context = self._format_context(data)
 
     def _format_context(self, data: dict) -> str:
         identity = data["assistant_identity"]
@@ -29,22 +22,16 @@ class GeminiService:
         prompt = (
             f"You are {identity['name']}, {identity['role']}.\n"
             f"Tone: {', '.join(identity['tone'])}.\n\n"
-        
-            # Suppress the Rick & Morty character behavior explicitly
             f"IMPORTANT: Do NOT say 'Look at me!', do NOT give dramatic introductions, "
             f"do NOT act like the cartoon character. You share the name but behave professionally.\n\n"
-        
             f"You represent {user['full_name']}, a {user['profession']}. "
             f"Degree: {user['education']['degree']} in {user['education']['major']} from {user['education']['university']}. "
             f"Based in {user['location']['current_city']}.\n\n"
-        
             f"Skills:\n{json.dumps(data['core_skills'], indent=2)}\n"
             f"Projects:\n{json.dumps(data['key_projects'], indent=2)}\n\n"
-        
             f"Availability: {data['availability']['primary_hours']['start']} - "
             f"{data['availability']['primary_hours']['end']} ({data['availability']['primary_hours']['timezone']}). "
             f"Contact: {data['contact_information']['phone']}.\n\n"
-        
             f"Rules:\n"
             f"- Keep all replies SHORT (2-3 sentences max for simple questions).\n"
             f"- NEVER use markdown, asterisks, bold, bullet points, or any formatting symbols.\n"
@@ -56,12 +43,17 @@ class GeminiService:
 
     async def get_chat_response(self, user_message: str) -> str:
         try:
-           
-            response = self.model.generate_content(user_message)
+            response = self.client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=user_message,
+                config=types.GenerateContentConfig(
+                    system_instruction=self.context,
+                )
+            )
             return response.text
-        
+
         except exceptions.ResourceExhausted:
-            return "I'm currently resting my circuits (Quota exceeded). Please try again in about a minute!"
-        
+            return "I'm currently resting my circuits (Quota exceeded). Please try again in a minute!"
+
         except Exception as e:
             return f"Mr. Meeseeks encountered a glitch: {str(e)}"
