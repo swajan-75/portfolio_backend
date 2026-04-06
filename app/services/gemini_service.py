@@ -2,7 +2,6 @@ import json
 import os
 from google import genai
 from google.genai import types
-from google.api_core import exceptions
 from app.core.config import settings
 
 class GeminiService:
@@ -52,8 +51,8 @@ class GeminiService:
             )
             return response.text
 
-        except exceptions.ResourceExhausted:
-            return "I'm currently resting my circuits (Quota exceeded). Please try again in a minute!"
-
         except Exception as e:
+            error = str(e).lower()
+            if "quota" in error or "429" in error or "resource exhausted" in error:
+                return "I'm currently resting my circuits (Quota exceeded). Please try again in a minute!"
             return f"Mr. Meeseeks encountered a glitch: {str(e)}"
