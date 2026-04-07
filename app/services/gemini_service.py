@@ -43,7 +43,7 @@ class GeminiService:
     async def get_chat_response(self, user_message: str) -> str:
         try:
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash",
+                model="gemini-3-flash-preview",
                 contents=user_message,
                 config=types.GenerateContentConfig(
                     system_instruction=self.context,
