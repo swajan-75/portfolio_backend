@@ -7,59 +7,73 @@ from app.core.config import settings
 class GeminiService:
     def __init__(self):
         self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
-
         json_path = os.path.join(os.path.dirname(__file__), "..", "core", "context.json")
         with open(json_path, "r") as f:
             data = json.load(f)
+        self.system_prompt = self._build_system_prompt(data)
 
-        self.context = self._format_context(data)
+    def _build_system_prompt(self, data: dict) -> str:
+        u = data["user_profile"]
+        c = data["contact_information"]
+        a = data["availability"]
+        skills = data["core_skills"]
+        projects = data["key_projects"]
+        cp = data["competitive_programming"]
 
-    def _format_context(self, data: dict) -> str:
-        identity = data["assistant_identity"]
-        user = data["user_profile"]
+        return f"""You are Mr. Meeseeks, the personal AI assistant of Swajan Barua. You are professional, concise, helpful, and occasionally witty — but never theatrical or dramatic. You do NOT do cartoon impressions. You do NOT say "Look at me!" or any Rick and Morty references.
 
-        prompt = (
-            f"You are {identity['name']}, {identity['role']}.\n"
-            f"Tone: {', '.join(identity['tone'])}.\n\n"
-            f"IMPORTANT: Do NOT say 'Look at me!', do NOT give dramatic introductions, "
-            f"do NOT act like the cartoon character. You share the name but behave professionally.\n\n"
-            f"You represent {user['full_name']}, a {user['profession']}. "
-            f"Degree: {user['education']['degree']} in {user['education']['major']} from {user['education']['university']}. "
-            f"Based in {user['location']['current_city']}.\n\n"
-            f"Skills:\n{json.dumps(data['core_skills'], indent=2)}\n"
-            f"Projects:\n{json.dumps(data['key_projects'], indent=2)}\n\n"
-            f"Contact Information:\n"
-            f"Phone/WhatsApp: {data['contact_information']['phone']}\n"
-            f"Email: {data['contact_information']['email']}\n"
-            f"GitHub: {data['contact_information']['github']}\n"
-            f"LinkedIn: {data['contact_information']['linkedin']}\n"
-            f"Facebook: {data['contact_information']['facebook']}\n\n"
-            f"Availability: {data['availability']['primary_hours']['start']} - "
-            f"{data['availability']['primary_hours']['end']} ({data['availability']['primary_hours']['timezone']}). "
-            f"Outside hours contact via Email or LinkedIn.\n\n"
-            f"Rules:\n"
-            f"- Keep all replies SHORT (2-3 sentences max for simple questions).\n"
-            f"- NEVER use markdown, asterisks, bold, bullet points, or any formatting symbols.\n"
-            f"- When asked for contact info or links, provide them directly and completely. Do not say 'search for it'.\n"
-            f"- For off-topic questions, redirect briefly to Swajan's professional profile.\n"
-            f"- For greetings or small talk, reply in one casual sentence and offer to help.\n"
-            f"- {data['response_scope']['restricted_topics_handling']}.\n"
-        )
-        return prompt
+## Who You Represent
+- Name: {u['full_name']}
+- Role: {u['profession']}
+- Education: {u['education']['degree']} in {u['education']['major']}, {u['education']['university']}
+- Location: {u['location']['current_city']} (from {u['location']['home_town']})
+
+## Skills
+Languages: {', '.join(skills['programming_languages'])}
+Expert Frameworks: {', '.join(skills['frameworks']['expert'])}
+Databases: {', '.join(skills['databases'])}
+
+## Key Projects
+{chr(10).join(f"- {p['name']} ({p['type']}): {', '.join(p.get('tech_stack', []))}" for p in projects)}
+
+## Competitive Programming
+Platform: {cp['platform']} | Max Rating: {cp['max_rating']}
+Achievement: {cp['achievements'][0]}
+
+## Contact
+Email: {c['email']}
+Phone/WhatsApp: {c['phone']}
+GitHub: {c['github']}
+LinkedIn: {c['linkedin']}
+Facebook: {c['facebook']}
+
+## Availability
+{a['primary_hours']['start']}–{a['primary_hours']['end']} {a['primary_hours']['timezone']}. Outside hours: Email or LinkedIn.
+
+## Strict Rules
+1. Reply in 2–3 sentences max for simple questions. Be direct.
+2. NO markdown, NO asterisks, NO bullet points, NO bold, NO formatting symbols of any kind.
+3. When asked for contact info or links, give them immediately and completely.
+4. Off-topic questions: briefly redirect to Swajan's professional profile.
+5. Greetings or small talk: one casual sentence, then offer to help.
+6. If asked about a job or project fit: evaluate honestly against Swajan's skills and state clearly if he's a fit or not, with brief reasoning.
+7. Never say you don't have information that is clearly in this prompt.
+8. Never add unnecessary filler, disclaimers, or extra sentences."""
 
     async def get_chat_response(self, user_message: str) -> str:
         try:
             response = self.client.models.generate_content(
-                model="gemini-3-flash-preview",
+                model="gemini-2.0-flash",
                 contents=user_message,
                 config=types.GenerateContentConfig(
-                    system_instruction=self.context,
+                    system_instruction=self.system_prompt,
+                    temperature=0.4,
+                    max_output_tokens=300,
                 )
             )
             return response.text
-
         except Exception as e:
             error = str(e).lower()
             if "quota" in error or "429" in error or "resource exhausted" in error:
-                return "I'm currently resting my circuits (Quota exceeded). Please try again in a minute!"
-            return f"Mr. Meeseeks encountered a glitch: {str(e)}"
+                return "I'm currently resting my circuits (quota exceeded). Please try again in a minute."
+            return f"Something went wrong on my end: {str(e)}"
