@@ -6,7 +6,8 @@ app = FastAPI(title="Swajan Portfolio AI Backend")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://swajan.vercel.app"],
+    allow_origins=["https://swajan.vercel.app","https://swajan.dev",
+    "https://www.swajan.dev",],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
