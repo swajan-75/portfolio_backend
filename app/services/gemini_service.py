@@ -73,7 +73,5 @@ Facebook: {c['facebook']}
             )
             return response.text
         except Exception as e:
-            error = str(e).lower()
-            if "quota" in error or "429" in error or "resource exhausted" in error:
-                return "I'm currently resting my circuits (quota exceeded). Please try again in a minute."
-            return f"Something went wrong on my end: {str(e)}"
+            print(f"Gemini error: {str(e)}")
+            return "I'm a bit busy right now. Try again in a moment."
