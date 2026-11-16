@@ -1,6 +1,7 @@
-fastapi
-uvicorn
-pydantic
-pydantic-settings
-google-genai
-python-dotenv
+fastapi==0.163.1
+uvicorn==0.54.0
+pydantic==2.14.3
+pydantic-settings==2.16.3
+google-genai==3.3.0
+python-dotenv==1.2.4
+slowapi==0.1.10
